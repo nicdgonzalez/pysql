@@ -1,0 +1,24 @@
+# .gitignore
+
+# General
+*config*
+!*example*
+build
+_*
+*.log
+
+# C/C++
+*.exe
+!*Config.cmake
+
+# Python
+__pycache__
+!__init__.py
+!__main__.py
+*.egg-info
+
+# Visual Studio Code
+.vscode
+
+# Explicit
+testing.py
