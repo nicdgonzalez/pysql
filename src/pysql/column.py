@@ -12,9 +12,11 @@ if TYPE_CHECKING:
 
 
 class Action(enum.StrEnum):
-    NO_ACTION = "NO_ACTION"
+    NO_ACTION = "NO ACTION"
     CASCADE = "CASCADE"
     RESTRICT = "RESTRICT"
+    SET_NULL = "SET NULL"
+    SET_DEFAULT = "SET DEFAULT"
 
 
 class NamedColumn:
@@ -42,6 +44,11 @@ class NamedColumn:
         Set a default value for when the row is set to `NULL`.
     check
         A statement that is used to ensure values follow certain criteria.
+
+    Attributes
+    ----------
+    table
+        The table this column belongs to.
     """
 
     def __init__(
@@ -53,9 +60,9 @@ class NamedColumn:
         unique: bool = False,
         not_null: bool = False,
         primary_key: bool = False,
-        reference: NamedColumn | ForeignKey | None = None,
-        on_delete: Action = Action.NO_ACTION,
-        on_update: Action = Action.NO_ACTION,
+        reference: NamedColumn | None = None,
+        on_delete: Action | None = None,
+        on_update: Action | None = None,
         default: Any | None = None,
         check: str | None = None,
     ) -> None:
@@ -75,6 +82,48 @@ class NamedColumn:
     def with_table(self, table: Table) -> Self:
         self.table = table
         return self
+
+    def to_sql_definition(self) -> str:
+        sql = f"{column.name} {column.data_type}"
+
+        if column.unique:
+            sql += " UNIQUE"
+
+        if column.not_null:
+            sql += " NOT NULL"
+
+        if column.reference is not None:
+            assert column.reference.table is not None
+
+            ref_table = column.reference.table.name
+            ref_column = column.reference.name
+            sql += f" REFERENCES {ref_table} ({ref_column})"
+
+            if column.on_delete is not None:
+                sql += f" ON DELETE {column.on_delete}"
+
+            if column.on_update is not None:
+                sql += f" ON UPDATE {column.on_update}"
+            else:
+                # Explicitly writing `pass` here to make it clear that
+                # the next `else` belongs to the parent `if`.
+                pass
+        else:
+            assert column.on_delete is None
+            assert column.on_update is None
+
+        if column.default is not None:
+            default_value = (
+                f"'{column.default}'"
+                if isinstance(column.default, str)
+                else str(column.default)
+            )
+            sql += f" DEFAULT {default_value}"
+
+        if column.check is not None:
+            sql += f" CHECK {column.check}"
+
+        return sql
 
 
 class UnnamedColumn:

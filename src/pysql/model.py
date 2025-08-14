@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Self
+from typing import Any
 
 from .column import NamedColumn, UnnamedColumn
 from .errors import EmptyTableNameError, InvalidColumnNameError
@@ -8,6 +8,8 @@ from .table import Table
 
 
 class ModelMeta(type):
+    _columns: list[NamedColumn]
+
     def __new__(
         cls,
         __name: str,
@@ -18,19 +20,19 @@ class ModelMeta(type):
         **kwargs: Any,
     ) -> ModelMeta:
         self = super().__new__(cls, __name, __bases, __attrs, *args, **kwargs)
-        self.columns: list[NamedColumn] = []
+        self._columns = []
 
         for name, column in __attrs.items():
             if isinstance(column, NamedColumn):
-                self.columns.append(column)
+                self._columns.append(column)
                 continue
 
             if not isinstance(column, UnnamedColumn):
                 continue
 
-            self.columns.append(column.into_named_column(name=name))
+            self._columns.append(column.into_named_column(name=name))
         else:
-            assert all((isinstance(c, NamedColumn) for c in columns))
+            assert all((isinstance(c, NamedColumn) for c in self._columns))
 
         return self
 
@@ -41,11 +43,9 @@ class Model(metaclass=ModelMeta):
     Raises
     ------
     EmptyTableNameError
-        The keyword argument `name` in the class' subclass arguments is
-        an empty string.
+        Attempted to override the table name with an empty string.
     InvalidColumnNameError
-        A keyword argument passed to this class' constructor was not
-        a valid column name.
+        An invalid keyword argument was passed to the constructor.
     """
 
     _table: Table
@@ -73,3 +73,8 @@ class Model(metaclass=ModelMeta):
                 )
 
         self.record: dict[str, Any] = record
+
+    @property
+    def table(self) -> Table:
+        return self._table
+
