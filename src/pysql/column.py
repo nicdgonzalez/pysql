@@ -6,7 +6,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Any, Self
 
-    from .constraint import ForeignKey
     from .data_type import DataType
     from .table import Table
 
@@ -84,44 +83,44 @@ class NamedColumn:
         return self
 
     def to_sql_definition(self) -> str:
-        sql = f"{column.name} {column.data_type}"
+        sql = f"{self.name} {self.data_type}"
 
-        if column.unique:
+        if self.unique:
             sql += " UNIQUE"
 
-        if column.not_null:
+        if self.not_null:
             sql += " NOT NULL"
 
-        if column.reference is not None:
-            assert column.reference.table is not None
+        if self.reference is not None:
+            assert self.reference.table is not None
 
-            ref_table = column.reference.table.name
-            ref_column = column.reference.name
+            ref_table = self.reference.table.name
+            ref_column = self.reference.name
             sql += f" REFERENCES {ref_table} ({ref_column})"
 
-            if column.on_delete is not None:
-                sql += f" ON DELETE {column.on_delete}"
+            if self.on_delete is not None:
+                sql += f" ON DELETE {self.on_delete}"
 
-            if column.on_update is not None:
-                sql += f" ON UPDATE {column.on_update}"
+            if self.on_update is not None:
+                sql += f" ON UPDATE {self.on_update}"
             else:
                 # Explicitly writing `pass` here to make it clear that
                 # the next `else` belongs to the parent `if`.
                 pass
         else:
-            assert column.on_delete is None
-            assert column.on_update is None
+            assert self.on_delete is None
+            assert self.on_update is None
 
-        if column.default is not None:
+        if self.default is not None:
             default_value = (
-                f"'{column.default}'"
-                if isinstance(column.default, str)
-                else str(column.default)
+                f"'{self.default}'"
+                if isinstance(self.default, str)
+                else str(self.default)
             )
             sql += f" DEFAULT {default_value}"
 
-        if column.check is not None:
-            sql += f" CHECK {column.check}"
+        if self.check is not None:
+            sql += f" CHECK {self.check}"
 
         return sql
 
@@ -150,9 +149,9 @@ class UnnamedColumn:
         unique: bool = False,
         not_null: bool = False,
         primary_key: bool = False,
-        reference: NamedColumn | ForeignKey | None = None,
-        on_delete: Action = Action.NO_ACTION,
-        on_update: Action = Action.NO_ACTION,
+        reference: NamedColumn | None = None,
+        on_delete: Action | None = None,
+        on_update: Action | None = None,
         default: Any | None = None,
         check: str | None = None,
     ) -> None:
@@ -189,19 +188,31 @@ def column(
     unique: bool = False,
     not_null: bool = False,
     primary_key: bool = False,
-    reference: NamedColumn | ForeignKey | None = None,
-    on_delete: Action = Action.NO_ACTION,
-    on_update: Action = Action.NO_ACTION,
+    reference: NamedColumn | None = None,
+    on_delete: Action | None = None,
+    on_update: Action | None = None,
     default: Any | None = None,
     check: str | None = None,
 ) -> UnnamedColumn | NamedColumn:
-    """Defines the spec for a column of a table in the database.
+    """Defines a column.
 
     This function returns different types based on whether the `name` argument
     is defined or not.
 
     For parameter documentation, see `NamedColumn`.
     """
+    # A static type checker is probably the best way to catch these kinds
+    # of errors and the way that I would recommend approaching this problem,
+    # but since the behavior of DataTypes is inconsistent (i.e., some types
+    # accept arguments, others do not), I will leave a human-readable message
+    # here in case you forgot/didn't know a data type accepted arguments.
+    if callable(data_type):
+        raise RuntimeError(
+            "expected an instance of `DataType`, but received `Callable`. "
+            "If this is a data type that accepts arguments, be sure to "
+            "invoke it to unwrap the DataType"
+        )
+
     if name is None:
         return UnnamedColumn(
             data_type,

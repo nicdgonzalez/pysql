@@ -1,19 +1,18 @@
 from __future__ import annotations
 
 import functools
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING
 
 import psycopg
+
+from .model import Model
 
 if TYPE_CHECKING:
     from typing import Any
 
     from psycopg.rows import Row
 
-
-class Statement(NamedTuple):
-    query: str
-    params: tuple[Any, ...] | None = None
+    from .statement import Statement
 
 
 @functools.wraps(psycopg.connect)
@@ -21,8 +20,9 @@ def connect(*args: Any, **kwargs: Any) -> Connection:
     """A thin wrapper over `psycopg.connect` that conveniently transforms
     the returned connection into our own `Connection` type.
     """
-    # XXX: This probably isn't the best way to do this.
-    # I didn't give it too much thought.
+    # This is here so I don't need to worry about when/where to handle
+    # commiting the data. This probably isn't the best way to handle this.
+    # I didn't really give it too much thought yet.
     kwargs.setdefault("autocommit", True)
     kwargs.setdefault("row_factory", psycopg.rows.DictRow)
 
@@ -32,6 +32,8 @@ def connect(*args: Any, **kwargs: Any) -> Connection:
 
 class Connection:
     """Represents a connection to the database."""
+
+    Model = Model
 
     def __init__(self, connection: psycopg.Connection) -> None:
         self._inner = connection

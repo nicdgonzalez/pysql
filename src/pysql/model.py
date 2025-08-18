@@ -19,22 +19,23 @@ class ModelMeta(type):
         *args: Any,
         **kwargs: Any,
     ) -> ModelMeta:
-        self = super().__new__(cls, __name, __bases, __attrs, *args, **kwargs)
-        self._columns = []
+        columns: list[NamedColumn] = []
 
         for name, column in __attrs.items():
             if isinstance(column, NamedColumn):
-                self._columns.append(column)
+                columns.append(column)
                 continue
 
             if not isinstance(column, UnnamedColumn):
                 continue
 
-            self._columns.append(column.into_named_column(name=name))
+            columns.append(column.into_named_column(name=name))
         else:
-            assert all((isinstance(c, NamedColumn) for c in self._columns))
+            assert all((isinstance(c, NamedColumn) for c in columns))
 
-        return self
+        __attrs["_columns"] = columns
+
+        return super().__new__(cls, __name, __bases, __attrs, *args, **kwargs)
 
 
 class Model(metaclass=ModelMeta):
@@ -48,7 +49,7 @@ class Model(metaclass=ModelMeta):
         An invalid keyword argument was passed to the constructor.
     """
 
-    _table: Table
+    table: Table
     _columns: list[NamedColumn]  # Defined in `ModelMeta.__new__`.
 
     def __init_subclass__(
@@ -62,19 +63,16 @@ class Model(metaclass=ModelMeta):
         if len(table_name) < 1:
             raise EmptyTableNameError()
 
-        cls._table = Table(name=table_name, columns=cls._columns)
+        cls.table = Table(name=table_name, columns=cls._columns)
+        print("Table defined:", cls.table.name)
 
     def __init__(self, **record: Any) -> None:
         for column_name in record.keys():
-            if column_name not in self._table.column_names:
+            if column_name not in self.table.column_names:
                 raise InvalidColumnNameError(
                     column_name=column_name,
-                    table_name=self._table.name,
+                    table_name=self.table.name,
                 )
 
         self.record: dict[str, Any] = record
-
-    @property
-    def table(self) -> Table:
-        return self._table
 

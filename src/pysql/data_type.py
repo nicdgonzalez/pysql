@@ -35,7 +35,7 @@ def VarChar(n: int, /) -> DataType:
 
 Date = DataType("DATE")
 DoublePrecision = DataType("DOUBLE PRECISION")
-Integer = DataType("Integer")
+Integer = DataType("INTEGER")
 
 
 def Interval(fields: str = "", precision: int = 6) -> DataType:

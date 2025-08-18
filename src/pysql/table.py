@@ -3,10 +3,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .column import NamedColumn
-from .core import Statement
+from .statement import Statement
 
 if TYPE_CHECKING:
-    from typing import Any, MappingView
+    from typing import Any, Mapping
 
     from .model import Model
 
@@ -44,7 +44,7 @@ class Table:
         columns.append(f"PRIMARY KEY ({', '.join(primary_keys)})")
 
         query = (
-            f"CREATE TABLE IF NOT EXISTS {self.name} ({', '.join(columns)})"  # noqa: E501
+            f"CREATE TABLE IF NOT EXISTS {self.name} ({', '.join(columns)})"
         )
 
         if self.inherit_from is not None:
@@ -53,7 +53,7 @@ class Table:
         return Statement(query)
 
     def insert(self, model: Model) -> Statement:
-        placeholders = ("%s" for _ in range(model.record.items()))
+        placeholders = ("%s" for _ in range(len(model.record.keys())))
         query = (
             f"INSERT INTO {self.name}({', '.join(model.record.keys())}) "
             f"VALUES({', '.join(placeholders)})"
@@ -64,7 +64,7 @@ class Table:
         self,
         model: Model,
         *,
-        filter: MappingView[str, Any] | None = None,
+        filter: Mapping[str, Any] | None = None,
     ) -> Statement:
         changes: list[str] = [f"{c} = %s" for c in model.record.keys()]
         query = f"UPDATE {self.name} SET {', '.join(changes)}"
@@ -81,18 +81,37 @@ class Table:
 
         return Statement(query, tuple(values))
 
-    def delete(self, model: Model) -> Statement:
+    def delete(self, filter: Model | None) -> Statement:
         query = f"DELETE FROM {self.name}"
         values: list[Any] = []
 
-        if bool(model.record):
+        if filter.record is not None:
             conditions: list[str] = []
 
-            # In this case, the `model` is the filter.
-            for column, value in model.record.items():
+            for column, value in filter.record.items():
                 conditions.append(f"{column} = %s")
                 values.append(value)
 
-            query += f"WHERE {' AND '.join(conditions)}"
+            query += f" WHERE {' AND '.join(conditions)}"
+
+        return Statement(query, tuple(values))
+
+    def fetch(
+        self,
+        *,
+        select: list[str],
+        filter: Model | None = None,
+    ) -> Statement:
+        query = f"SELECT {', '.join(select)} FROM {self.name}"
+        values: list[Any] = []
+
+        if filter is not None:
+            conditions: list[str] = []
+
+            for column, value in filter.record.items():
+                conditions.append(f"{column} = %s")
+                values.append(value)
+
+            query += f" WHERE {' AND '.join(conditions)}"
 
         return Statement(query, tuple(values))
