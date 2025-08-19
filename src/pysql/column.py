@@ -204,8 +204,8 @@ def column(
     # A static type checker is probably the best way to catch these kinds
     # of errors and the way that I would recommend approaching this problem,
     # but since the behavior of DataTypes is inconsistent (i.e., some types
-    # accept arguments, others do not), I will leave a human-readable message
-    # here in case you forgot/didn't know a data type accepted arguments.
+    # accept arguments, others do not), I think leaving a human-readable error
+    # message here is reasonable.
     if callable(data_type):
         raise RuntimeError(
             "expected an instance of `DataType`, but received `Callable`. "

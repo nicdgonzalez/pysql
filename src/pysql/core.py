@@ -38,34 +38,22 @@ class Connection:
     def __init__(self, connection: psycopg.Connection) -> None:
         self._inner = connection
 
-    def execute(self, statement: Statement) -> None:
-        self._inner.execute(
+    def _execute_impl(self, statement: Statement) -> psycopg.Cursor[Row]:
+        return self._inner.execute(
             query=statement.query,
             params=statement.params,
             prepare=None,
             binary=False,
         )
 
+    def execute(self, statement: Statement) -> None:
+        self._execute_impl(statement=statement)
+
     def fetch_one(self, statement: Statement) -> Row | None:
-        return self._inner.execute(
-            query=statement.query,
-            params=statement.params,
-            prepare=None,
-            binary=False,
-        ).fetchone()
+        return self._execute_impl(statement=statement).fetchone()
 
     def fetch_many(self, statement: Statement, size: int = 0) -> list[Row]:
-        return self._inner.execute(
-            query=statement.query,
-            params=statement.params,
-            prepare=None,
-            binary=False,
-        ).fetchmany(size=size)
+        return self._execute_impl(statement=statement).fetchmany(size=size)
 
     def fetch_all(self, statement: Statement) -> list[Row]:
-        return self._inner.execute(
-            query=statement.query,
-            params=statement.params,
-            prepare=None,
-            binary=False,
-        ).fetchall()
+        return self._execute_impl(statement=statement).fetchall()

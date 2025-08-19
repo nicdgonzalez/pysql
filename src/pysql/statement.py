@@ -3,9 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, NamedTuple
 
 if TYPE_CHECKING:
-    from typing import Any
+    from psycopg.rows import Row
 
 
 class Statement(NamedTuple):
     query: str
-    params: tuple[Any, ...] | None = None
+    params: Row | None = None
